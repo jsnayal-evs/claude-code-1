@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Todo App</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h1 span { font-size: 1.4rem; }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus { border-color: #6c63ff; }
+
+    button.add-btn {
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button.add-btn:hover { background: #574fd6; }
+
+    .stats {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat {
+      flex: 1;
+      background: #f8f7ff;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat .num { font-size: 1.5rem; font-weight: 700; color: #6c63ff; }
+    .stat .label { font-size: 0.75rem; color: #888; margin-top: 2px; }
+
+    .todo-list { list-style: none; }
+
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; } }
+
+    .todo-item:last-child { border-bottom: none; }
+
+    .check-btn {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid #6c63ff;
+      background: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+      font-size: 12px;
+      color: #fff;
+    }
+
+    .check-btn.done { background: #6c63ff; border-color: #6c63ff; }
+
+    .task-text {
+      flex: 1;
+      font-size: 0.95rem;
+      color: #333;
+      transition: color 0.2s;
+    }
+
+    .task-text.done {
+      text-decoration: line-through;
+      color: #aaa;
+    }
+
+    .del-btn {
+      background: none;
+      border: none;
+      color: #ccc;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .del-btn:hover { color: #e74c3c; background: #fff0f0; }
+
+    .empty {
+      text-align: center;
+      color: #bbb;
+      padding: 32px 0;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1><span>✅</span> My Todos</h1>
+
+    <div class="input-row">
+      <input type="text" id="taskInput" placeholder="Add a new task..." />
+      <button class="add-btn" onclick="addTask()">Add</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="num" id="totalCount">0</div><div class="label">Total</div></div>
+      <div class="stat"><div class="num" id="doneCount">0</div><div class="label">Done</div></div>
+      <div class="stat"><div class="num" id="pendingCount">0</div><div class="label">Pending</div></div>
+    </div>
+
+    <ul class="todo-list" id="todoList"></ul>
+  </div>
+
+  <script>
+    async function fetchTodos() {
+      const res = await fetch('/todos');
+      return res.json();
+    }
+
+    function render(todos) {
+      const list = document.getElementById('todoList');
+      document.getElementById('totalCount').textContent = todos.length;
+      document.getElementById('doneCount').textContent = todos.filter(t => t.done).length;
+      document.getElementById('pendingCount').textContent = todos.filter(t => !t.done).length;
+
+      if (!todos.length) {
+        list.innerHTML = '<div class="empty">No tasks yet. Add one above!</div>';
+        return;
+      }
+
+      list.innerHTML = todos.map(t => `
+        <li class="todo-item">
+          <button class="check-btn ${t.done ? 'done' : ''}" onclick="toggleDone(${t.id})">
+            ${t.done ? '✓' : ''}
+          </button>
+          <span class="task-text ${t.done ? 'done' : ''}">${t.task}</span>
+          <button class="del-btn" onclick="deleteTask(${t.id})">✕</button>
+        </li>
+      `).join('');
+    }
+
+    async function addTask() {
+      const input = document.getElementById('taskInput');
+      const task = input.value.trim();
+      if (!task) return;
+      const res = await fetch('/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({task}) });
+      render(await res.json());
+      input.value = '';
+    }
+
+    async function toggleDone(id) {
+      const res = await fetch('/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({id}) });
+      render(await res.json());
+    }
+
+    async function deleteTask(id) {
+      const res = await fetch('/delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({id}) });
+      render(await res.json());
+    }
+
+    document.getElementById('taskInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addTask();
+    });
+
+    fetchTodos().then(render);
+  </script>
+</body>
+</html>
